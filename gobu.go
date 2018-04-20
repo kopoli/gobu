@@ -17,6 +17,29 @@ var (
 	exitValue    int = 0
 )
 
+type GoBu struct {
+	ldflags     string
+	buildflags  []string
+	environment map[string]string
+	subcmd      string
+}
+
+func (g *GoBu) AddLdFlags(flags ...string) {
+
+}
+
+func (g *GoBu) AddBuildFlags(flags ...string) {
+
+}
+
+func (g *GoBu) SetEnv(key, value string) {
+
+}
+
+func (g *GoBu) Getcmd() (command []string, env map[string]string) {
+	return nil, nil
+}
+
 func fault(err error, message string, arg ...string) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s%s: %s\n", message, strings.Join(arg, " "), err)
