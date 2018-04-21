@@ -1,10 +1,13 @@
 package main
 
 import (
+	"archive/zip"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -28,7 +31,10 @@ type GoBu struct {
 	ldflags    []string
 	buildflags []string
 	environ    []string
+	givenOs    string
+	version    string
 	subcmd     string
+	dopackage  bool
 }
 
 func (g *GoBu) AddLdFlags(flags ...string) {
@@ -45,6 +51,16 @@ func (g *GoBu) AddBuildFlags(flags ...string) {
 
 func (g *GoBu) SetEnv(key, value string) {
 	g.environ = append(g.environ, fmt.Sprintf("%s=%s", key, value))
+	if key == "GOOS" {
+		g.givenOs = value
+	}
+}
+
+func (g *GoBu) TargetOs() string {
+	if g.givenOs != "" {
+		return g.givenOs
+	}
+	return runtime.GOOS
 }
 
 func (g *GoBu) Getcmd() (command []string, env []string) {
@@ -62,6 +78,68 @@ func (g *GoBu) Getcmd() (command []string, env []string) {
 	}
 
 	return command, g.environ
+}
+
+func CreatePackage() error {
+	filestr := os.Getenv("GOBU_EXTRA_DIST")
+	files := []string{"README*", "LICENSE"}
+	if filestr != "" {
+		files = strings.Split(filestr, " ")
+	}
+
+	archive, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		return err
+	}
+	binary := filepath.Base(archive)
+	progname := binary
+	if gb.version != "" {
+		progname = fmt.Sprintf("%s-%s", progname, gb.version)
+	}
+	zipfile := fmt.Sprintf("%s.zip", progname)
+
+	if gb.TargetOs() == "windows" {
+		binary = binary + ".exe"
+	}
+	files = append(files, binary)
+
+	fp, err := os.Create(zipfile)
+	if err != nil {
+		return err
+	}
+	defer fp.Close()
+
+	w := zip.NewWriter(fp)
+	defer w.Close()
+
+	properfiles := []string{}
+	for i := range files {
+		f, err := filepath.Glob(files[i])
+		if err != nil || len(f) == 0 {
+			continue
+		}
+
+		properfiles = append(properfiles, f...)
+	}
+	files = properfiles
+
+	for i := range files {
+		fw, err := w.Create(fmt.Sprintf("%s/%s", progname, files[i]))
+		if err != nil {
+			return err
+		}
+		rfp, err := os.Open(files[i])
+		if err != nil {
+			return err
+		}
+
+		_, err = io.Copy(fw, rfp)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 var Traits = map[string]func(){
@@ -94,9 +172,12 @@ var Traits = map[string]func(){
 	},
 	"version": func() {
 		gb.AddVar("main.timestamp", time.Now().Format(time.RFC3339))
-		gb.AddVar("main.version", cmdStr("git", "describe", "--always", "--tags", "--dirty"))
+		gb.AddVar("main.version", gb.version)
 		gb.AddVar("main.buildGOOS", runtime.GOOS)
 		gb.AddVar("main.buildGOARCH", runtime.GOARCH)
+	},
+	"package": func() {
+		gb.dopackage = true
 	},
 }
 var appliedTraits = map[string]bool{}
@@ -153,7 +234,7 @@ func main() {
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "%s: Traitful go build\n\n", os.Args[0])
-		fmt.Fprintln(os.Stderr, "Command line options:",)
+		fmt.Fprintln(os.Stderr, "Command line options:")
 		flag.PrintDefaults()
 	}
 
@@ -164,6 +245,7 @@ func main() {
 		os.Exit(0)
 	}
 
+	gb.version = cmdStr("git", "describe", "--always", "--tags", "--dirty")
 	Traits["release"] = func() {
 		applyTraits("shrink", "version", "static", "rebuild")
 	}
@@ -198,6 +280,11 @@ func main() {
 
 	err := runCommand(c, e)
 	fault(err, "Build failed")
+
+	if gb.dopackage {
+		err = CreatePackage()
+		fault(err, "Creating package failed")
+	}
 
 	os.Exit(0)
 }
