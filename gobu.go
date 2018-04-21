@@ -75,7 +75,7 @@ var Traits = map[string]func(){
 		gb.AddLdFlags("-s", "-w")
 	},
 	"rebuild": func() {
-		gb.AddLdFlags("-a")
+		gb.AddBuildFlags("-a")
 	},
 	"linux": func() {
 		gb.SetEnv("GOOS", "linux")
@@ -151,6 +151,12 @@ func main() {
 	opts.Set("program-buildgoos", buildGOOS)
 	opts.Set("program-buildgoarch", buildGOARCH)
 
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "%s: Traitful go build\n\n", os.Args[0])
+		fmt.Fprintln(os.Stderr, "Command line options:",)
+		flag.PrintDefaults()
+	}
+
 	flag.Parse()
 
 	if *optVersion {
@@ -182,15 +188,14 @@ func main() {
 	if len(args) == 0 {
 		args = []string{"default"}
 	}
-	fmt.Println(args)
 
+	applyTraits(args...)
 	c, e := gb.Getcmd()
 
 	if *optDebug {
 		fmt.Printf("Command: %v\nEnvironment: %v", c, e)
 	}
 
-	applyTraits(args...)
 	err := runCommand(c, e)
 	fault(err, "Build failed")
 
