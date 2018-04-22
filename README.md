@@ -45,6 +45,9 @@ The following composite traits are supported:
 - **release**: Sets the traits: **shrink**, **version**, **static** and
   **rebuild**.
 
+If there are conflicting options (e.g. **linux** and **windows**) then the
+latter will be in effect.
+
 ## Example
 
 ```
