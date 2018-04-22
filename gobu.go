@@ -80,6 +80,9 @@ func (g *gobu) Getcmd() (command []string, env []string) {
 	return command, g.environ
 }
 
+// createPackage creates a zip package of the built binary and some extra
+// files. The environment variable GOBU_EXTRA_DIST can be used to include
+// additional files to the zip package.
 func createPackage() error {
 	var err error
 	filestr := os.Getenv("GOBU_EXTRA_DIST")
