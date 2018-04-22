@@ -104,7 +104,8 @@ func createPackage() error {
 	binary := filepath.Base(archive)
 	progname := binary
 	if gb.version != "" {
-		progname = fmt.Sprintf("%s-%s", progname, gb.version)
+		progname = fmt.Sprintf("%s-%s-%s-%s", progname, gb.version,
+			gb.TargetOs(), runtime.GOARCH)
 	}
 	zipfile := fmt.Sprintf("%s.zip", progname)
 
