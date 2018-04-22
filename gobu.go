@@ -17,17 +17,17 @@ import (
 )
 
 var (
-	majorVersion       = "0"
-	version            = "Undefined"
-	timestamp          = "Undefined"
-	buildGOOS          = "Undefined"
-	buildGOARCH        = "Undefined"
-	progVersion        = majorVersion + "-" + version
-	exitValue    int   = 0
-	gb           *GoBu = &GoBu{}
+	majorVersion = "0"
+	version      = "Undefined"
+	timestamp    = "Undefined"
+	buildGOOS    = "Undefined"
+	buildGOARCH  = "Undefined"
+	progVersion  = majorVersion + "-" + version
+	exitValue    int
+	gb           = &gobu{}
 )
 
-type GoBu struct {
+type gobu struct {
 	ldflags    []string
 	buildflags []string
 	environ    []string
@@ -37,33 +37,33 @@ type GoBu struct {
 	dopackage  bool
 }
 
-func (g *GoBu) AddLdFlags(flags ...string) {
+func (g *gobu) AddLdFlags(flags ...string) {
 	g.ldflags = append(g.ldflags, flags...)
 }
 
-func (g *GoBu) AddVar(name, value string) {
+func (g *gobu) AddVar(name, value string) {
 	g.AddLdFlags("-X", fmt.Sprintf("%s=%s", name, value))
 }
 
-func (g *GoBu) AddBuildFlags(flags ...string) {
+func (g *gobu) AddBuildFlags(flags ...string) {
 	g.buildflags = append(g.buildflags, flags...)
 }
 
-func (g *GoBu) SetEnv(key, value string) {
+func (g *gobu) SetEnv(key, value string) {
 	g.environ = append(g.environ, fmt.Sprintf("%s=%s", key, value))
 	if key == "GOOS" {
 		g.givenOs = value
 	}
 }
 
-func (g *GoBu) TargetOs() string {
+func (g *gobu) TargetOs() string {
 	if g.givenOs != "" {
 		return g.givenOs
 	}
 	return runtime.GOOS
 }
 
-func (g *GoBu) Getcmd() (command []string, env []string) {
+func (g *gobu) Getcmd() (command []string, env []string) {
 	if g.subcmd == "" {
 		g.subcmd = "build"
 	}
@@ -80,7 +80,8 @@ func (g *GoBu) Getcmd() (command []string, env []string) {
 	return command, g.environ
 }
 
-func CreatePackage() error {
+func createPackage() error {
+	var err error
 	filestr := os.Getenv("GOBU_EXTRA_DIST")
 	files := []string{"README*", "LICENSE"}
 	if filestr != "" {
@@ -107,14 +108,25 @@ func CreatePackage() error {
 	if err != nil {
 		return err
 	}
-	defer fp.Close()
+	defer func() {
+		e2 := fp.Close()
+		if err == nil && e2 != nil {
+			err = e2
+		}
+	}()
 
 	w := zip.NewWriter(fp)
-	defer w.Close()
+	defer func() {
+		e2 := w.Close()
+		if err == nil && e2 != nil {
+			err = e2
+		}
+	}()
 
 	properfiles := []string{}
 	for i := range files {
-		f, err := filepath.Glob(files[i])
+		var f []string
+		f, err = filepath.Glob(files[i])
 		if err != nil || len(f) == 0 {
 			continue
 		}
@@ -124,11 +136,13 @@ func CreatePackage() error {
 	files = properfiles
 
 	for i := range files {
-		fw, err := w.Create(fmt.Sprintf("%s/%s", progname, files[i]))
+		var fw io.Writer
+		fw, err = w.Create(fmt.Sprintf("%s/%s", progname, files[i]))
 		if err != nil {
 			return err
 		}
-		rfp, err := os.Open(files[i])
+		var rfp *os.File
+		rfp, err = os.Open(files[i])
 		if err != nil {
 			return err
 		}
@@ -139,10 +153,10 @@ func CreatePackage() error {
 		}
 	}
 
-	return nil
+	return err
 }
 
-var Traits = map[string]func(){
+var traits = map[string]func(){
 	"nocgo": func() {
 		gb.SetEnv("CGO_ENABLED", "0")
 	},
@@ -182,14 +196,14 @@ var Traits = map[string]func(){
 }
 var appliedTraits = map[string]bool{}
 
-func applyTraits(traits ...string) {
-	for i := range traits {
-		if _, ok := appliedTraits[traits[i]]; ok {
+func applyTraits(names ...string) {
+	for i := range names {
+		if _, ok := appliedTraits[names[i]]; ok {
 			continue
 		}
-		if t, ok := Traits[traits[i]]; ok {
+		if t, ok := traits[names[i]]; ok {
 			t()
-			appliedTraits[traits[i]] = true
+			appliedTraits[names[i]] = true
 		}
 	}
 }
@@ -214,7 +228,7 @@ func cmdStr(args ...string) string {
 
 func fault(err error, message string, arg ...string) {
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s%s: %s\n", message, strings.Join(arg, " "), err)
+		_, _ = fmt.Fprintf(os.Stderr, "Error: %s%s: %s\n", message, strings.Join(arg, " "), err)
 		exitValue = 1
 		os.Exit(exitValue)
 	}
@@ -246,22 +260,22 @@ func main() {
 	}
 
 	gb.version = cmdStr("git", "describe", "--always", "--tags", "--dirty")
-	Traits["release"] = func() {
+	traits["release"] = func() {
 		applyTraits("shrink", "version", "static", "rebuild")
 	}
-	Traits["default"] = func() {
+	traits["default"] = func() {
 		applyTraits("version")
 	}
 
 	if *optListTraits {
-		traits := []string{}
-		for k := range Traits {
-			traits = append(traits, k)
+		names := []string{}
+		for k := range traits {
+			names = append(names, k)
 		}
-		sort.Strings(traits)
+		sort.Strings(names)
 		fmt.Println("Traits:")
-		for i := range traits {
-			fmt.Println("  ", traits[i])
+		for i := range names {
+			fmt.Println("  ", names[i])
 		}
 		os.Exit(0)
 	}
@@ -282,7 +296,7 @@ func main() {
 	fault(err, "Build failed")
 
 	if gb.dopackage {
-		err = CreatePackage()
+		err = createPackage()
 		fault(err, "Creating package failed")
 	}
 
