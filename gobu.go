@@ -54,6 +54,12 @@ func (g *gobu) SetEnv(key, value string) {
 	if key == "GOOS" {
 		g.givenOs = value
 	}
+	err := os.Setenv(key, value)
+	if err != nil {
+		fmt.Fprintf(os.Stderr,
+			"Error: Failed to set environment variable %s=%s: %s",
+			key, value, err)
+	}
 }
 
 func (g *gobu) TargetOs() string {
@@ -213,7 +219,6 @@ func applyTraits(names ...string) {
 
 func runCommand(args []string, env []string) error {
 	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Env = env
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
