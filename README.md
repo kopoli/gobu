@@ -57,10 +57,12 @@ $ gobu shrink static nocgo
 This will add the `-s -w -extldflags "-static"` flags to the linker, and set
 the `CGO_ENABLED=0` environment variable
 
-The binary packages of `gobu` are generated with the following command:
+The binary packages of `gobu` are generated with the following commands:
 
 ```
-$ gobu release package
+$ gobu linux nocgo release package
+
+$ gobu windows nocgo release package
 ```
 
 ## License
