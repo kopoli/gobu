@@ -298,7 +298,8 @@ func main() {
 	c, e := gb.Getcmd()
 
 	if *optDebug {
-		fmt.Printf("Command: %v\nEnvironment: %v", c, e)
+		fmt.Printf("Command: %s\nEnvironment:\n%s\n",
+			strings.Join(c, " "), strings.Join(e, "\n"))
 	}
 
 	err := runCommand(c, e)
