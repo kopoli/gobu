@@ -194,6 +194,10 @@ func newgobutraits() *gobutraits {
 		"windows": func() {
 			gb.SetEnv("GOOS", "windows")
 		},
+		"windowsgui": func() {
+			ret.apply("windows")
+			gb.AddLdFlags("-H", "windowsgui")
+		},
 		"verbose": func() {
 			gb.AddBuildFlags("-v")
 		},

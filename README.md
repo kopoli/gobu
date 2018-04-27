@@ -37,6 +37,7 @@ The following traits are supported:
   * `main.buildGOARCH`: Value of `runtime.GOARCH`.
 
 - **windows**: Set `GOOS=windows` environment variable.
+- **windowsgui**: Set **windows** trait and `-H windowsgui` link flag.
 
 The following composite traits are supported:
 
