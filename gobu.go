@@ -17,12 +17,11 @@ import (
 )
 
 var (
-	majorVersion = "0"
-	version      = "Undefined"
-	timestamp    = "Undefined"
-	buildGOOS    = "Undefined"
-	buildGOARCH  = "Undefined"
-	progVersion  = majorVersion + "-" + version
+	version     = "Undefined"
+	timestamp   = "Undefined"
+	buildGOOS   = "Undefined"
+	buildGOARCH = "Undefined"
+	progVersion = "" + version
 )
 
 type gobu struct {
