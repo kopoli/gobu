@@ -23,7 +23,6 @@ var (
 	buildGOOS    = "Undefined"
 	buildGOARCH  = "Undefined"
 	progVersion  = majorVersion + "-" + version
-	exitValue    int
 )
 
 type gobu struct {
@@ -258,8 +257,7 @@ func cmdStr(args ...string) string {
 func fault(err error, message string, arg ...string) {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error: %s%s: %s\n", message, strings.Join(arg, " "), err)
-		exitValue = 1
-		os.Exit(exitValue)
+		os.Exit(1)
 	}
 }
 
