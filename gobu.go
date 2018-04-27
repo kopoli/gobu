@@ -166,54 +166,71 @@ func createPackage() error {
 	return err
 }
 
-var traits = map[string]func(){
-	"nocgo": func() {
-		gb.SetEnv("CGO_ENABLED", "0")
-	},
-	"static": func() {
-		gb.AddLdFlags("-extldflags", `"-static"`)
-	},
-	"shrink": func() {
-		gb.AddLdFlags("-s", "-w")
-	},
-	"rebuild": func() {
-		gb.AddBuildFlags("-a")
-	},
-	"linux": func() {
-		gb.SetEnv("GOOS", "linux")
-	},
-	"windows": func() {
-		gb.SetEnv("GOOS", "windows")
-	},
-	"verbose": func() {
-		gb.AddBuildFlags("-v")
-	},
-	"debug": func() {
-		gb.AddBuildFlags("-x")
-	},
-	"install": func() {
-		gb.subcmd = "install"
-	},
-	"version": func() {
-		gb.AddVar("main.timestamp", time.Now().Format(time.RFC3339))
-		gb.AddVar("main.version", gb.version)
-		gb.AddVar("main.buildGOOS", runtime.GOOS)
-		gb.AddVar("main.buildGOARCH", runtime.GOARCH)
-	},
-	"package": func() {
-		gb.dopackage = true
-	},
+type gobutraits struct {
+	traits  map[string]func()
+	applied map[string]bool
 }
-var appliedTraits = map[string]bool{}
 
-func applyTraits(names ...string) {
+func newgobutraits() *gobutraits {
+	var ret = &gobutraits{
+		applied: make(map[string]bool),
+	}
+	ret.traits = map[string]func(){
+		"nocgo": func() {
+			gb.SetEnv("CGO_ENABLED", "0")
+		},
+		"static": func() {
+			gb.AddLdFlags("-extldflags", `"-static"`)
+		},
+		"shrink": func() {
+			gb.AddLdFlags("-s", "-w")
+		},
+		"rebuild": func() {
+			gb.AddBuildFlags("-a")
+		},
+		"linux": func() {
+			gb.SetEnv("GOOS", "linux")
+		},
+		"windows": func() {
+			gb.SetEnv("GOOS", "windows")
+		},
+		"verbose": func() {
+			gb.AddBuildFlags("-v")
+		},
+		"debug": func() {
+			gb.AddBuildFlags("-x")
+		},
+		"install": func() {
+			gb.subcmd = "install"
+		},
+		"version": func() {
+			gb.AddVar("main.timestamp", time.Now().Format(time.RFC3339))
+			gb.AddVar("main.version", gb.version)
+			gb.AddVar("main.buildGOOS", runtime.GOOS)
+			gb.AddVar("main.buildGOARCH", runtime.GOARCH)
+		},
+		"package": func() {
+			gb.dopackage = true
+		},
+		"release": func() {
+			ret.apply("shrink", "version", "static", "rebuild")
+		},
+		"default": func() {
+			ret.apply("version")
+		},
+	}
+
+	return ret
+}
+
+func (g *gobutraits) apply(names ...string) {
 	for i := range names {
-		if _, ok := appliedTraits[names[i]]; ok {
+		if _, ok := g.applied[names[i]]; ok {
 			continue
 		}
-		if t, ok := traits[names[i]]; ok {
+		if t, ok := g.traits[names[i]]; ok {
 			t()
-			appliedTraits[names[i]] = true
+			g.applied[names[i]] = true
 		}
 	}
 }
@@ -269,16 +286,12 @@ func main() {
 	}
 
 	gb.version = cmdStr("git", "describe", "--always", "--tags", "--dirty")
-	traits["release"] = func() {
-		applyTraits("shrink", "version", "static", "rebuild")
-	}
-	traits["default"] = func() {
-		applyTraits("version")
-	}
+
+	tr := newgobutraits()
 
 	if *optListTraits {
 		names := []string{}
-		for k := range traits {
+		for k := range tr.traits {
 			names = append(names, k)
 		}
 		sort.Strings(names)
@@ -294,7 +307,7 @@ func main() {
 		args = []string{"default"}
 	}
 
-	applyTraits(args...)
+	tr.apply(args...)
 	c, e := gb.Getcmd()
 
 	if *optDebug {
