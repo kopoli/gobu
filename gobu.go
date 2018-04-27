@@ -24,7 +24,6 @@ var (
 	buildGOARCH  = "Undefined"
 	progVersion  = majorVersion + "-" + version
 	exitValue    int
-	gb           = &gobu{}
 )
 
 type gobu struct {
@@ -89,7 +88,7 @@ func (g *gobu) Getcmd() (command []string, env []string) {
 // createPackage creates a zip package of the built binary and some extra
 // files. The environment variable GOBU_EXTRA_DIST can be used to include
 // additional files to the zip package.
-func createPackage() error {
+func (g *gobu) createPackage() error {
 	var err error
 	filestr := os.Getenv("GOBU_EXTRA_DIST")
 	files := []string{"README*", "LICENSE"}
@@ -103,13 +102,13 @@ func createPackage() error {
 	}
 	binary := filepath.Base(archive)
 	progname := binary
-	if gb.version != "" {
-		progname = fmt.Sprintf("%s-%s-%s-%s", progname, gb.version,
-			gb.TargetOs(), runtime.GOARCH)
+	if g.version != "" {
+		progname = fmt.Sprintf("%s-%s-%s-%s", progname, g.version,
+			g.TargetOs(), runtime.GOARCH)
 	}
 	zipfile := fmt.Sprintf("%s.zip", progname)
 
-	if gb.TargetOs() == "windows" {
+	if g.TargetOs() == "windows" {
 		binary = binary + ".exe"
 	}
 	files = append(files, binary)
@@ -171,7 +170,7 @@ type gobutraits struct {
 	applied map[string]bool
 }
 
-func newgobutraits() *gobutraits {
+func newgobutraits(gb *gobu) *gobutraits {
 	var ret = &gobutraits{
 		applied: make(map[string]bool),
 	}
@@ -289,9 +288,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	gb.version = cmdStr("git", "describe", "--always", "--tags", "--dirty")
+	gb := &gobu{
+		version: cmdStr("git", "describe", "--always", "--tags", "--dirty"),
+	}
 
-	tr := newgobutraits()
+	tr := newgobutraits(gb)
 
 	if *optListTraits {
 		names := []string{}
@@ -323,7 +324,7 @@ func main() {
 	fault(err, "Build failed")
 
 	if gb.dopackage {
-		err = createPackage()
+		err = gb.createPackage()
 		fault(err, "Creating package failed")
 	}
 
