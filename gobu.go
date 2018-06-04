@@ -224,6 +224,31 @@ func newgobutraits(gb *gobu) *gobutraits {
 	return ret
 }
 
+func (g *gobutraits) check(names ...string) error {
+	inv := make(map[string]bool)
+
+	for i := range names {
+		if _, ok := g.traits[names[i]]; !ok {
+			inv[names[i]] = true
+		}
+	}
+
+	suffix := "s"
+	switch len(inv) {
+	case 0:
+		return nil
+	case 1:
+		suffix = ""
+	}
+
+	var invalid []string
+	for k := range inv {
+		invalid = append(invalid, k)
+	}
+
+	return fmt.Errorf("Invalid trait%s: %s", suffix, strings.Join(invalid, ", "))
+}
+
 func (g *gobutraits) apply(names ...string) {
 	for i := range names {
 		if _, ok := g.applied[names[i]]; ok {
@@ -309,6 +334,9 @@ func main() {
 		args = []string{"default"}
 	}
 
+	err := tr.check(args...)
+	fault(err, "Parsing command line failed")
+
 	tr.apply(args...)
 	c, e := gb.Getcmd()
 
@@ -317,7 +345,7 @@ func main() {
 			strings.Join(c, " "), strings.Join(e, "\n"))
 	}
 
-	err := runCommand(c, e)
+	err = runCommand(c, e)
 	fault(err, "Build failed")
 
 	if gb.dopackage {
