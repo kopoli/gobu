@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	util "github.com/kopoli/go-util"
@@ -163,8 +164,22 @@ func (g *gobu) createPackage() error {
 	return err
 }
 
+type traitdesc struct {
+	help  string
+	trait func()
+}
+
+type descmap map[string]traitdesc
+
+func (d *descmap) add(name, help string, trait func()) {
+	(*d)[name] = traitdesc{
+		help:  help,
+		trait: trait,
+	}
+}
+
 type gobutraits struct {
-	traits  map[string]func()
+	traits  descmap
 	applied map[string]bool
 }
 
@@ -172,54 +187,56 @@ func newgobutraits(gb *gobu) *gobutraits {
 	var ret = &gobutraits{
 		applied: make(map[string]bool),
 	}
-	ret.traits = map[string]func(){
-		"nocgo": func() {
-			gb.SetEnv("CGO_ENABLED", "0")
-		},
-		"static": func() {
-			gb.AddLdFlags("-extldflags", `"-static"`)
-		},
-		"shrink": func() {
-			gb.AddLdFlags("-s", "-w")
-		},
-		"rebuild": func() {
-			gb.AddBuildFlags("-a")
-		},
-		"linux": func() {
-			gb.SetEnv("GOOS", "linux")
-		},
-		"windows": func() {
-			gb.SetEnv("GOOS", "windows")
-		},
-		"windowsgui": func() {
-			ret.apply("windows")
-			gb.AddLdFlags("-H", "windowsgui")
-		},
-		"verbose": func() {
-			gb.AddBuildFlags("-v")
-		},
-		"debug": func() {
-			gb.AddBuildFlags("-x")
-		},
-		"install": func() {
-			gb.subcmd = "install"
-		},
-		"version": func() {
-			gb.AddVar("main.timestamp", time.Now().Format(time.RFC3339))
-			gb.AddVar("main.version", gb.version)
-			gb.AddVar("main.buildGOOS", runtime.GOOS)
-			gb.AddVar("main.buildGOARCH", runtime.GOARCH)
-		},
-		"package": func() {
-			gb.dopackage = true
-		},
-		"release": func() {
-			ret.apply("shrink", "version", "static", "rebuild")
-		},
-		"default": func() {
-			ret.apply("version")
-		},
-	}
+	t := make(descmap)
+
+	t.add("nocgo", "Set 'CGO_ENABLED=0' environment variable.", func() {
+		gb.SetEnv("CGO_ENABLED", "0")
+	})
+	t.add("static", "Set '-extldflags \"-static\"' link flags.", func() {
+		gb.AddLdFlags("-extldflags", `"-static"`)
+	})
+	t.add("shrink", "Set '-s -w' link flags.", func() {
+		gb.AddLdFlags("-s", "-w")
+	})
+	t.add("rebuild", "Set '-a' build flag.", func() {
+		gb.AddBuildFlags("-a")
+	})
+	t.add("linux", "Set 'GOOS=linux' environment variable.", func() {
+		gb.SetEnv("GOOS", "linux")
+	})
+	t.add("windows", "Set 'GOOS=windows' environment variable.", func() {
+		gb.SetEnv("GOOS", "windows")
+	})
+	t.add("windowsgui", "Set windows trait and '-H windowsgui' link flag.", func() {
+		ret.apply("windows")
+		gb.AddLdFlags("-H", "windowsgui")
+	})
+	t.add("verbose", "Set '-v' build flag.", func() {
+		gb.AddBuildFlags("-v")
+	})
+	t.add("debug", "Set '-x' build flag.", func() {
+		gb.AddBuildFlags("-x")
+	})
+	t.add("install", "Run 'go install' instead of 'go build'.", func() {
+		gb.subcmd = "install"
+	})
+	t.add("version", "Set 'timestamp', 'version', 'buildGOOS' and 'buildGOARCH' go variables to the 'main' package.", func() {
+		gb.AddVar("main.timestamp", time.Now().Format(time.RFC3339))
+		gb.AddVar("main.version", gb.version)
+		gb.AddVar("main.buildGOOS", runtime.GOOS)
+		gb.AddVar("main.buildGOARCH", runtime.GOARCH)
+	})
+	t.add("package", "After building creates a zip-package of the binary.", func() {
+		gb.dopackage = true
+	})
+	t.add("release", "Sets the traits: shrink, version, static and rebuild.", func() {
+		ret.apply("shrink", "version", "static", "rebuild")
+	})
+	t.add("default", "Sets the version trait. This is used if run without arguments.", func() {
+		ret.apply("version")
+	})
+
+	ret.traits = t
 
 	return ret
 }
@@ -255,7 +272,7 @@ func (g *gobutraits) apply(names ...string) {
 			continue
 		}
 		if t, ok := g.traits[names[i]]; ok {
-			t()
+			t.trait()
 			g.applied[names[i]] = true
 		}
 	}
@@ -323,9 +340,11 @@ func main() {
 		}
 		sort.Strings(names)
 		fmt.Println("Traits:")
+		wr := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 		for i := range names {
-			fmt.Println("  ", names[i])
+			fmt.Fprintf(wr, "  %s\t%s\n", names[i], tr.traits[names[i]].help)
 		}
+		wr.Flush()
 		os.Exit(0)
 	}
 
