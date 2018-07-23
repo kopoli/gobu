@@ -25,6 +25,7 @@ The following traits are supported:
 - **package**: After building creates a zip-package of the binary, README* and
   LICENSE files. Extra files can be added with the `GOBU_EXTRA_DIST`
   environment variable.
+- **race**: Set `-race` build flag.
 - **rebuild**: Set `-a` build flag.
 - **shrink**: Set `-s -w` link flags.
 - **static**: Set `-extldflags "-static"` link flags.

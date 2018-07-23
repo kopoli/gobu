@@ -198,6 +198,9 @@ func newgobutraits(gb *gobu) *gobutraits {
 	t.add("shrink", "Set '-s -w' link flags.", func() {
 		gb.AddLdFlags("-s", "-w")
 	})
+	t.add("race", "Set '-race' build flag.", func() {
+		gb.AddBuildFlags("-race")
+	})
 	t.add("rebuild", "Set '-a' build flag.", func() {
 		gb.AddBuildFlags("-a")
 	})
