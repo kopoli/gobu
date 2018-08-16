@@ -28,9 +28,11 @@ var (
 type gobu struct {
 	ldflags    []string
 	buildflags []string
+	gcflags    []string
 	environ    []string
 	givenOs    string
 	version    string
+	binary     string
 	subcmd     string
 	dopackage  bool
 }
@@ -39,12 +41,28 @@ func (g *gobu) AddLdFlags(flags ...string) {
 	g.ldflags = append(g.ldflags, flags...)
 }
 
+func (g *gobu) ResetLdFlags() {
+	g.ldflags = nil
+}
+
 func (g *gobu) AddVar(name, value string) {
 	g.AddLdFlags("-X", fmt.Sprintf("%s=%s", name, value))
 }
 
 func (g *gobu) AddBuildFlags(flags ...string) {
 	g.buildflags = append(g.buildflags, flags...)
+}
+
+func (g *gobu) ResetBuildFlags() {
+	g.buildflags = nil
+}
+
+func (g *gobu) AddCompileFlags(flags ...string) {
+	g.gcflags = append(g.gcflags, flags...)
+}
+
+func (g *gobu) ResetCompileFlags() {
+	g.gcflags = nil
 }
 
 func (g *gobu) SetEnv(key, value string) {
@@ -68,10 +86,13 @@ func (g *gobu) TargetOs() string {
 }
 
 func (g *gobu) Getcmd() (command []string, env []string) {
+	if g.binary == "" {
+		g.binary = "go"
+	}
 	if g.subcmd == "" {
 		g.subcmd = "build"
 	}
-	command = append(command, "go", g.subcmd)
+	command = append(command, g.binary, g.subcmd)
 
 	if g.buildflags != nil {
 		command = append(command, g.buildflags...)
@@ -79,6 +100,10 @@ func (g *gobu) Getcmd() (command []string, env []string) {
 
 	if g.ldflags != nil {
 		command = append(command, "-ldflags", strings.Join(g.ldflags, " "))
+	}
+
+	if g.gcflags != nil {
+		command = append(command, "-gcflags", strings.Join(g.gcflags, " "))
 	}
 
 	return command, g.environ
@@ -165,16 +190,26 @@ func (g *gobu) createPackage() error {
 }
 
 type traitdesc struct {
-	help  string
-	trait func()
+	help       string
+	trait      func()
+	paramTrait func(string)
 }
 
 type descmap map[string]traitdesc
 
 func (d *descmap) add(name, help string, trait func()) {
 	(*d)[name] = traitdesc{
-		help:  help,
-		trait: trait,
+		help:       help,
+		trait:      trait,
+		paramTrait: nil,
+	}
+}
+
+func (d *descmap) addFlag(name, help string, trait func(string)) {
+	(*d)[name] = traitdesc{
+		help:       help,
+		trait:      nil,
+		paramTrait: trait,
 	}
 }
 
@@ -239,17 +274,41 @@ func newgobutraits(gb *gobu) *gobutraits {
 		ret.apply("version")
 	})
 
+	t.addFlag("go=", "Set the 'go' binary explicitly.", func(s string) {
+		gb.binary = s
+	})
+	t.addFlag("ldflags=", "Set 'go tool link' flags explicitly.", func(s string) {
+		gb.ResetLdFlags()
+		gb.AddLdFlags(s)
+	})
+	t.addFlag("buildflags=", "Set 'go build' flags explicitly.", func(s string) {
+		gb.ResetBuildFlags()
+		gb.AddBuildFlags(s)
+	})
+	t.addFlag("gcflags=", "Set 'go tool compile' flags explicitly.", func(s string) {
+		gb.ResetCompileFlags()
+		gb.AddCompileFlags(s)
+	})
 	ret.traits = t
 
 	return ret
+}
+
+func isFlagTrait(name string) bool {
+	return strings.Index(name, "=") != -1
+}
+
+func parseTrait(name string) string {
+	return strings.SplitAfter(name, "=")[0]
 }
 
 func (g *gobutraits) check(names ...string) error {
 	inv := make(map[string]bool)
 
 	for i := range names {
-		if _, ok := g.traits[names[i]]; !ok {
-			inv[names[i]] = true
+		n := parseTrait(names[i])
+		if _, ok := g.traits[n]; !ok {
+			inv[n] = true
 		}
 	}
 
@@ -271,12 +330,17 @@ func (g *gobutraits) check(names ...string) error {
 
 func (g *gobutraits) apply(names ...string) {
 	for i := range names {
-		if _, ok := g.applied[names[i]]; ok {
+		n := parseTrait(names[i])
+		if _, ok := g.applied[n]; ok {
 			continue
 		}
-		if t, ok := g.traits[names[i]]; ok {
-			t.trait()
-			g.applied[names[i]] = true
+		if t, ok := g.traits[n]; ok {
+			if isFlagTrait(n) {
+				t.paramTrait(strings.SplitN(names[i], "=", 2)[1])
+			} else {
+				t.trait()
+			}
+			g.applied[n] = true
 		}
 	}
 }
@@ -342,10 +406,22 @@ func main() {
 			names = append(names, k)
 		}
 		sort.Strings(names)
-		fmt.Println("Traits:")
+
 		wr := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-		for i := range names {
+		fmt.Fprintln(wr, "Traits:")
+		printTrait := func(i int) {
 			fmt.Fprintf(wr, "  %s\t%s\n", names[i], tr.traits[names[i]].help)
+		}
+		for i := range names {
+			if !isFlagTrait(names[i]) {
+				printTrait(i)
+			}
+		}
+		fmt.Fprintln(wr, "\nParameterized traits:")
+		for i := range names {
+			if isFlagTrait(names[i]) {
+				printTrait(i)
+			}
 		}
 		wr.Flush()
 		os.Exit(0)
