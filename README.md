@@ -64,7 +64,7 @@ $ gobu shrink static nocgo
 ```
 
 This will add the `-s -w -extldflags "-static"` flags to the linker, and set
-the `CGO_ENABLED=0` environment variable
+the `CGO_ENABLED=0` environment variable.
 
 The parameterized traits can be used like the following:
 
