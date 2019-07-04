@@ -34,6 +34,7 @@ type gobu struct {
 	version    string
 	binary     string
 	subcmd     string
+	name       string
 	dopackage  bool
 }
 
@@ -109,6 +110,21 @@ func (g *gobu) Getcmd() (command []string, env []string) {
 	return command, g.environ
 }
 
+func (g *gobu) getTransformedBinaryName(name string) string {
+	if g.name != "" {
+		return strings.ReplaceAll(g.name, "%n", name)
+	}
+	return name
+}
+
+func (g *gobu) getBinaryName() (string, error) {
+	archive, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		return "", err
+	}
+	return g.getTransformedBinaryName(filepath.Base(archive)), nil
+}
+
 // createPackage creates a zip package of the built binary and some extra
 // files. The environment variable GOBU_EXTRA_DIST can be used to include
 // additional files to the zip package.
@@ -120,11 +136,10 @@ func (g *gobu) createPackage() error {
 		files = strings.Split(filestr, " ")
 	}
 
-	archive, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	binary, err := g.getBinaryName()
 	if err != nil {
 		return err
 	}
-	binary := filepath.Base(archive)
 	progname := binary
 	if g.version != "" {
 		progname = fmt.Sprintf("%s-%s-%s-%s", progname, g.version,
@@ -288,6 +303,14 @@ func newgobutraits(gb *gobu) *gobutraits {
 	t.addFlag("gcflags=", "Set 'go tool compile' flags explicitly.", func(s string) {
 		gb.ResetCompileFlags()
 		gb.AddCompileFlags(s)
+	})
+	t.addFlag("name=", "Set binary name with the -o build flag. %n represents original name.", func(s string) {
+		gb.name = s
+		name, err := gb.getBinaryName()
+		if err != nil {
+			panic(err)
+		}
+		gb.AddBuildFlags("-o", name)
 	})
 	ret.traits = t
 
