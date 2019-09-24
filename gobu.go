@@ -407,6 +407,7 @@ func fault(err error, message string, arg ...string) {
 var optVersion = flag.Bool("v", false, "Display version")
 var optListTraits = flag.Bool("l", false, "List traits")
 var optDebug = flag.Bool("d", false, "Enable debug output")
+var optDryRun = flag.Bool("dryrun", false, "Don't actually run any commands. Implies '-d'.")
 
 func main() {
 	opts := util.NewOptions()
@@ -473,10 +474,14 @@ func main() {
 	tr.apply(args...)
 	c, e := gb.Getcmd()
 
-	if *optDebug {
+	if *optDebug || *optDryRun {
 		fmt.Printf("Traits:\n%s\nCommand:\n%s\nEnvironment:\n%s\n",
 			strings.Join(tr.appliedTraits(), " "),
 			strings.Join(c, " "), strings.Join(e, "\n"))
+	}
+
+	if *optDryRun {
+		os.Exit(0)
 	}
 
 	err = runCommand(c, e)
