@@ -368,6 +368,18 @@ func (g *gobutraits) apply(names ...string) {
 	}
 }
 
+func (g *gobutraits) appliedTraits() []string {
+	var ret []string
+
+	for k, v := range g.applied {
+		if v {
+			ret = append(ret, k)
+		}
+	}
+
+	return ret
+}
+
 func runCommand(args []string, env []string) error {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
@@ -462,7 +474,8 @@ func main() {
 	c, e := gb.Getcmd()
 
 	if *optDebug {
-		fmt.Printf("Command: %s\nEnvironment:\n%s\n",
+		fmt.Printf("Traits:\n%s\nCommand:\n%s\nEnvironment:\n%s\n",
+			strings.Join(tr.appliedTraits(), " "),
 			strings.Join(c, " "), strings.Join(e, "\n"))
 	}
 
