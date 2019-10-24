@@ -254,6 +254,9 @@ func newgobutraits(gb *gobu) *gobutraits {
 	t.add("rebuild", "Set '-a' build flag.", func() {
 		gb.AddBuildFlags("-a")
 	})
+	t.add("trimpath", "Set '-trimpath' build flag.", func() {
+		gb.AddBuildFlags("-trimpath")
+	})
 	t.add("linux", "Set 'GOOS=linux' environment variable.", func() {
 		gb.SetEnv("GOOS", "linux")
 	})
@@ -282,8 +285,8 @@ func newgobutraits(gb *gobu) *gobutraits {
 	t.add("package", "After building creates a zip-package of the binary.", func() {
 		gb.dopackage = true
 	})
-	t.add("release", "Sets the traits: shrink, version, static and rebuild.", func() {
-		ret.apply("shrink", "version", "static", "rebuild")
+	t.add("release", "Sets the traits: shrink, version, static, rebuild and trimpath.", func() {
+		ret.apply("shrink", "version", "static", "rebuild", "trimpath")
 	})
 	t.add("default", "Sets the version trait. This is used if run without arguments.", func() {
 		ret.apply("version")

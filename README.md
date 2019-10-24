@@ -26,6 +26,7 @@ The following traits are supported:
   LICENSE files. Extra files can be added with the `GOBU_EXTRA_DIST`
   environment variable.
 - **race**: Set `-race` build flag.
+- **trimpath**: Set `-trimpath` build flag.
 - **rebuild**: Set `-a` build flag.
 - **shrink**: Set `-s -w` link flags.
 - **static**: Set `-extldflags "-static"` link flags.
@@ -44,8 +45,8 @@ The following composite traits are supported:
 
 - **default**: Sets the **version** trait. This is used if `gobu` is run
   without arguments.
-- **release**: Sets the traits: **shrink**, **version**, **static** and
-  **rebuild**.
+- **release**: Sets the traits: **shrink**, **version**, **static**,
+  **rebuild** and **trimpath**.
 
 The following parameterized traits are supported:
 
