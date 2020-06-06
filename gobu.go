@@ -1,5 +1,7 @@
 package main
 
+//go:generate licrep -o licenses.go
+
 import (
 	"archive/zip"
 	"flag"
@@ -411,6 +413,7 @@ var optVersion = flag.Bool("v", false, "Display version")
 var optListTraits = flag.Bool("l", false, "List traits")
 var optDebug = flag.Bool("d", false, "Enable debug output")
 var optDryRun = flag.Bool("dryrun", false, "Don't actually run any commands. Implies '-d'.")
+var optLicenses = flag.Bool("licenses", false, "Show licenses of gobu.")
 
 func main() {
 	opts := appkit.NewOptions()
@@ -430,6 +433,15 @@ func main() {
 
 	if *optVersion {
 		fmt.Println(appkit.VersionString(opts))
+		os.Exit(0)
+	}
+
+	if *optLicenses {
+		l, err := GetLicenses()
+		fault(err, "Getting licenses failed")
+		s, err := appkit.LicenseString(l)
+		fault(err, "Interpreting licenses failed")
+		fmt.Print(s)
 		os.Exit(0)
 	}
 
