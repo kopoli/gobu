@@ -14,7 +14,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	util "github.com/kopoli/go-util"
+	"github.com/kopoli/appkit"
 )
 
 var (
@@ -413,7 +413,7 @@ var optDebug = flag.Bool("d", false, "Enable debug output")
 var optDryRun = flag.Bool("dryrun", false, "Don't actually run any commands. Implies '-d'.")
 
 func main() {
-	opts := util.NewOptions()
+	opts := appkit.NewOptions()
 	opts.Set("program-name", os.Args[0])
 	opts.Set("program-version", progVersion)
 	opts.Set("program-timestamp", timestamp)
@@ -429,7 +429,7 @@ func main() {
 	flag.Parse()
 
 	if *optVersion {
-		fmt.Println(util.VersionString(opts))
+		fmt.Println(appkit.VersionString(opts))
 		os.Exit(0)
 	}
 
