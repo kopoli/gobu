@@ -297,6 +297,9 @@ func newgobutraits(gb *gobu) *gobutraits {
 	t.addFlag("go=", "Set the 'go' binary explicitly.", func(s string) {
 		gb.binary = s
 	})
+	t.addFlag("tags=", "Set 'go build -tags' explicitly.", func(s string) {
+		gb.AddBuildFlags("-tags", s)
+	})
 	t.addFlag("ldflags=", "Set 'go tool link' flags explicitly.", func(s string) {
 		gb.ResetLdFlags()
 		gb.AddLdFlags(s)
