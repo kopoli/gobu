@@ -427,7 +427,7 @@ func main() {
 	opts.Set("program-buildgoarch", buildGOARCH)
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "%s: Traitful go build\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS] [TRAIT ...]\n\nTraitful go build\n\n", os.Args[0])
 		fmt.Fprintln(os.Stderr, "Command line options:")
 		flag.PrintDefaults()
 	}
