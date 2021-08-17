@@ -1,4 +1,4 @@
-// Generated with by licrep version v0.3.0
+// Generated with by licrep version v0.3.4
 // https://github.com/kopoli/licrep
 // Called with: licrep -o licenses.go
 
@@ -25,12 +25,13 @@ type License struct {
 // the package names.
 func GetLicenses() (map[string]License, error) {
 	type EncodedLicense struct {
-		Name string
-		Text string
+		Name   string
+		Text   string
+		length int64
 	}
 	data := map[string]EncodedLicense{
 
-		"github.com/kopoli/appkit": EncodedLicense{
+		"github.com/kopoli/appkit": {
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRzW7jNhC+8yk+5JQAQrrYY2+MRVtEJNKg6HV9pCU6YiuLhkg3yNsXIzu7zZ4Eceb7
@@ -45,10 +46,11 @@ RdbSHgq2llYR51obcGy5sXK1q7nBdme2uhXgqoTSSqq1kWojGqHsM6SC0hA/hLJoK17XJMX4zlbakD+s
 9PZg5KayqHRdCtPiRaCW/KUWNyl1wKrmsilQ8oZvxILSthKG0drNHfaVoCfS4wp8ZaVWFGOllTV8ZQtY
 bexP6F62ogA3sqVC1kY3BaM69ZpWpCKcEjcWqhpfLqLN8r9rxU9ClILXUm1aAlPEz+Vn9l8AAAD//7MD
 VDw4BAAA`,
+			length: 1080,
 		},
 	}
 
-	decode := func(input string) (string, error) {
+	decode := func(input string, length int64) (string, error) {
 		data := &bytes.Buffer{}
 		br := base64.NewDecoder(base64.StdEncoding, strings.NewReader(input))
 
@@ -57,7 +59,7 @@ VDw4BAAA`,
 			return "", err
 		}
 
-		_, err = io.Copy(data, r)
+		_, err = io.CopyN(data, r, length)
 		if err != nil {
 			return "", err
 		}
@@ -73,7 +75,7 @@ VDw4BAAA`,
 	ret := make(map[string]License)
 
 	for k := range data {
-		text, err := decode(data[k].Text)
+		text, err := decode(data[k].Text, data[k].length)
 		if err != nil {
 			return nil, err
 		}
