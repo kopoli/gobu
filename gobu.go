@@ -150,7 +150,7 @@ func (g *gobu) createPackage() error {
 	zipfile := fmt.Sprintf("%s.zip", progname)
 
 	if g.TargetOs() == "windows" {
-		binary = binary + ".exe"
+		binary += ".exe"
 	}
 	files = append(files, binary)
 
@@ -278,12 +278,13 @@ func newgobutraits(gb *gobu) *gobutraits {
 	t.add("install", "Run 'go install' instead of 'go build'.", func() {
 		gb.subcmd = "install"
 	})
-	t.add("version", "Set 'timestamp', 'version', 'buildGOOS' and 'buildGOARCH' go variables to the 'main' package.", func() {
-		gb.AddVar("main.timestamp", time.Now().Format(time.RFC3339))
-		gb.AddVar("main.version", gb.version)
-		gb.AddVar("main.buildGOOS", runtime.GOOS)
-		gb.AddVar("main.buildGOARCH", runtime.GOARCH)
-	})
+	t.add("version",
+		"Set 'timestamp', 'version', 'buildGOOS' and 'buildGOARCH' go variables to the 'main' package.", func() {
+			gb.AddVar("main.timestamp", time.Now().Format(time.RFC3339))
+			gb.AddVar("main.version", gb.version)
+			gb.AddVar("main.buildGOOS", runtime.GOOS)
+			gb.AddVar("main.buildGOARCH", runtime.GOARCH)
+		})
 	t.add("package", "After building creates a zip-package of the binary.", func() {
 		gb.dopackage = true
 	})
@@ -326,7 +327,7 @@ func newgobutraits(gb *gobu) *gobutraits {
 }
 
 func isFlagTrait(name string) bool {
-	return strings.Index(name, "=") != -1
+	return strings.Contains(name, "=")
 }
 
 func parseTrait(name string) string {
@@ -356,7 +357,7 @@ func (g *gobutraits) check(names ...string) error {
 		invalid = append(invalid, k)
 	}
 
-	return fmt.Errorf("Invalid trait%s: %s", suffix, strings.Join(invalid, ", "))
+	return fmt.Errorf("invalid trait%s: %s", suffix, strings.Join(invalid, ", "))
 }
 
 func (g *gobutraits) apply(names ...string) {
@@ -392,6 +393,7 @@ func runCommand(args []string, env []string) error {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Env = env
 
 	return cmd.Run()
 }
@@ -405,9 +407,9 @@ func cmdStr(args ...string) string {
 	return strings.Trim(string(out), " \n\r\t")
 }
 
-func fault(err error, message string, arg ...string) {
+func fault(err error, message string) {
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %s%s: %s\n", message, strings.Join(arg, " "), err)
+		_, _ = fmt.Fprintf(os.Stderr, "Error: %s: %s\n", message, err)
 		os.Exit(1)
 	}
 }
