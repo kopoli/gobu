@@ -389,11 +389,10 @@ func (g *gobutraits) appliedTraits() []string {
 	return ret
 }
 
-func runCommand(args []string, env []string) error {
+func runCommand(args []string) error {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = env
 
 	return cmd.Run()
 }
@@ -504,7 +503,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	err = runCommand(c, e)
+	err = runCommand(c)
 	fault(err, "Build failed")
 
 	if gb.dopackage {
